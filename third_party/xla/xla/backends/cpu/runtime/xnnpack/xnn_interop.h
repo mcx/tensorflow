@@ -1,4 +1,4 @@
-/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2024 The OpenXLA Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,23 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef XLA_TSL_PLATFORM_DEFAULT_MUTEX_DATA_H_
-#define XLA_TSL_PLATFORM_DEFAULT_MUTEX_DATA_H_
+#ifndef XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_
+#define XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_
 
-namespace tsl {
-namespace internal {
+#include "xnnpack.h"  // IWYU pragma: keep
 
-// The internal state of a mutex.
-struct MuData {
-  void* space[2];
-};
+namespace xla::cpu {}
 
-// The internal state of a condition_variable.
-struct CVData {
-  void* space[2];
-};
-
-}  // namespace internal
-}  // namespace tsl
-
-#endif  // XLA_TSL_PLATFORM_DEFAULT_MUTEX_DATA_H_
+#endif  // XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_

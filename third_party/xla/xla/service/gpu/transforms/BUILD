@@ -20,6 +20,25 @@ package(
 )
 
 cc_library(
+    name = "simplify_int4_dots",
+    srcs = ["simplify_int4_dots.cc"],
+    hdrs = ["simplify_int4_dots.h"],
+    deps = [
+        "//xla/hlo/ir:hlo",
+        "//xla/hlo/pass:hlo_pass",
+        "//xla/service:pattern_matcher",
+        "//xla/service/gpu/fusions/triton:triton_support",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@local_tsl//tsl/platform:errors",
+        "@local_tsl//tsl/platform:status",
+        "@local_tsl//tsl/platform:statusor",
+    ],
+)
+
+cc_library(
     name = "dot_algorithm_rewriter",
     srcs = ["dot_algorithm_rewriter.cc"],
     hdrs = ["dot_algorithm_rewriter.h"],
@@ -2001,7 +2020,7 @@ cc_library(
         "//xla:xla_data_proto_cc",
         "//xla/hlo/ir:hlo",
         "//xla/hlo/pass:hlo_pass",
-        "//xla/service/gpu:cusolver_context",
+        "//xla/stream_executor:gpu_solver_context",
         "//xla/service/gpu:ir_emission_utils",
         "//xla/stream_executor:blas",
         "//xla/stream_executor:device_memory_allocator",
@@ -2009,6 +2028,7 @@ cc_library(
         "@local_tsl//tsl/platform:logging",
         "@local_tsl//tsl/platform:status",
         "@local_tsl//tsl/platform:statusor",
+        "@com_google_absl//absl/functional:any_invocable",
     ]),
 )
 

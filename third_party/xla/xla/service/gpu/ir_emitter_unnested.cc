@@ -93,6 +93,9 @@ limitations under the License.
 #include "xla/service/global_device_id.h"
 #include "xla/service/gpu/backend_configs.pb.h"
 #include "xla/service/gpu/cublas_cudnn.h"
+#ifdef GOOGLE_CUDA
+#include "xla/stream_executor/cuda/cuda_solver_context.h"
+#endif  // GOOGLE_CUDA
 #include "xla/service/gpu/execution_stream_assignment.h"
 #include "xla/service/gpu/fusions/fusion_emitter.h"
 #include "xla/service/gpu/fusions/fusions.h"
@@ -112,6 +115,9 @@ limitations under the License.
 #include "xla/service/gpu/matmul_utils.h"
 #include "xla/service/gpu/model/tiled_hlo_computation.h"
 #include "xla/service/gpu/parallel_loop_emitter.h"
+#ifdef TENSORFLOW_USE_ROCM
+#include "xla/stream_executor/rocm/rocm_solver_context.h"
+#endif  // TENSORFLOW_USE_ROCM
 #include "xla/service/gpu/runtime/cholesky_thunk.h"
 #include "xla/service/gpu/runtime/command_buffer_cmd.h"
 #include "xla/service/gpu/runtime/command_buffer_cmd_emitter.h"
@@ -131,7 +137,6 @@ limitations under the License.
 #include "xla/service/gpu/runtime/nccl_all_gather_thunk.h"
 #include "xla/service/gpu/runtime/nccl_all_reduce_thunk.h"
 #include "xla/service/gpu/runtime/nccl_all_to_all_thunk.h"
-#include "xla/service/gpu/runtime/nccl_api.h"
 #include "xla/service/gpu/runtime/nccl_collective_broadcast_thunk.h"
 #include "xla/service/gpu/runtime/nccl_collective_permute_thunk.h"
 #include "xla/service/gpu/runtime/nccl_collective_thunk.h"
@@ -1045,9 +1050,16 @@ absl::Status IrEmitterUnnested::EmitCholeskyThunk(const HloInstruction* instr) {
         /*mem_size=*/ShapeUtil::ByteSizeOf(shape)));
   }
 
+#if GOOGLE_CUDA
+  auto solver_creator = stream_executor::CudaSolverContext::Create;
+#else
+  auto solver_creator = stream_executor::RocmSolverContext::Create;
+#endif
+
   thunks.push_back(std::make_unique<CholeskyThunk>(
       Thunk::ThunkInfo::WithProfileAnnotation(instr), options, a_buffer,
-      workspace_buffer, info_buffer, shape.element_type(), batch_size, n));
+      workspace_buffer, info_buffer, shape.element_type(), batch_size, n,
+      solver_creator));
 
   // Elide the sequential thunk if there's no copy.
   if (thunks.size() == 1) {
@@ -1405,7 +1417,6 @@ absl::Status IrEmitterUnnested::EmitTritonCustomCall(
     TF_ASSIGN_OR_RETURN(
         auto result,
         CompileTritonToLLVM(hlo_module->config(), hlo_module->name(),
-                            ir_emitter_context_->gpu_compute_capability(),
                             ir_emitter_context_->gpu_device_info(),
                             block_level_parameters, triton_module.get(),
                             ir_emitter_context_->llvm_module(), mlir_context,
@@ -1836,8 +1847,8 @@ absl::Status IrEmitterUnnested::EmitCollectivePermute(
         /*source_memory_space=*/src_memory_space,
         /*destination_memory_space=*/dst_memory_space};
     auto thunk = std::make_unique<NcclCollectivePermuteStartThunk>(
-        Thunk::ThunkInfo::WithProfileAnnotation(instr), NcclApi::Default(),
-        instr, replica_count, partition_count, buffer,
+        Thunk::ThunkInfo::WithProfileAnnotation(instr), instr, replica_count,
+        partition_count, buffer,
         ir_emitter_context_->debug_options().xla_gpu_use_memcpy_local_p2p());
     GetCollectivesAsyncEvents().try_emplace(instr, thunk->async_events());
     AddThunkToThunkSequence(std::move(thunk));
@@ -1922,8 +1933,7 @@ absl::Status IrEmitterUnnested::EmitNcclThunk(
       thunk_info.profile_annotation = async_start->name();
     }
     auto thunk = std::make_unique<NcclThunkType>(
-        thunk_info, NcclApi::Default(), inst,
-        /*buffers=*/std::move(buffers),
+        thunk_info, inst, /*buffers=*/std::move(buffers),
         ir_emitter_context_->debug_options().xla_gpu_use_memcpy_local_p2p());
     GetCollectivesAsyncEvents().insert({async_start, thunk->async_events()});
     AddThunkToThunkSequence(std::move(thunk));
@@ -2350,8 +2360,8 @@ absl::Status IrEmitterUnnested::EmitSendThunk(const HloSendInstruction* instr) {
         /*source_memory_space=*/memory_space,
         /*destination_memory_space=*/memory_space};
     auto thunk = std::make_unique<NcclSendThunk>(
-        Thunk::ThunkInfo::WithProfileAnnotation(instr), NcclApi::Default(),
-        instr, replica_count, partition_count, nccl_buffer);
+        Thunk::ThunkInfo::WithProfileAnnotation(instr), instr, replica_count,
+        partition_count, nccl_buffer);
     CollectivesAsyncEvents& collectives_async_events =
         GetCollectivesAsyncEvents();
 
@@ -2426,8 +2436,8 @@ absl::Status IrEmitterUnnested::EmitRecvThunk(const HloRecvInstruction* instr) {
         /*source_memory_space=*/memory_space,
         /*destination_memory_space=*/memory_space};
     auto thunk = std::make_unique<NcclRecvThunk>(
-        Thunk::ThunkInfo::WithProfileAnnotation(instr), NcclApi::Default(),
-        instr, replica_count, partition_count, nccl_buffer);
+        Thunk::ThunkInfo::WithProfileAnnotation(instr), instr, replica_count,
+        partition_count, nccl_buffer);
     CollectivesAsyncEvents& collectives_async_events =
         GetCollectivesAsyncEvents();
 
