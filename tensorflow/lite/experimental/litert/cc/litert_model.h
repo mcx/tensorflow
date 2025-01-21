@@ -319,6 +319,12 @@ class Subgraph : public internal::NonOwnedHandle<LiteRtSubgraph> {
   SubgraphInputs Inputs() const;
   SubgraphOutputs Outputs() const;
   std::vector<Op> Ops() const;
+
+  // Returns the input tensor with the given input signature name.
+  Expected<Tensor> Input(absl::string_view name) const;
+
+  // Returns the output tensor with the given output signature name.
+  Expected<Tensor> Output(absl::string_view name) const;
 };
 
 // Model signature. C++ equivalent of LiteRtSignature.
@@ -469,6 +475,23 @@ class Model : public internal::Handle<LiteRtModel, LiteRtDestroyModel> {
     return Signature(lite_rt_signature);
   }
 
+  // Returns the signature index for the given signature key.
+  Expected<size_t> GetSignatureIndex(absl::string_view signature_key) const {
+    LiteRtParamIndex num_signatures;
+    internal::AssertOk(LiteRtGetNumModelSignatures, Get(), &num_signatures);
+    for (int i = 0; i < num_signatures; ++i) {
+      LiteRtSignature lite_rt_signature;
+      internal::AssertOk(LiteRtGetModelSignature, Get(), i, &lite_rt_signature);
+      const char* key_cstr;
+      internal::AssertOk(LiteRtGetSignatureKey, lite_rt_signature, &key_cstr);
+      if (absl::string_view(key_cstr) == signature_key) {
+        return i;
+      }
+    }
+    return Unexpected(kLiteRtStatusErrorNotFound, "Signature not found");
+  }
+
+  // Returns the Signature object for the given signature key.
   Expected<class Signature> FindSignature(
       absl::string_view signature_key) const {
     LiteRtParamIndex num_signatures;

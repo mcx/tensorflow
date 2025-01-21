@@ -123,6 +123,12 @@ class HloRunnerPjRt : public HloRunnerInterface {
     return device_shape_size_fn_;
   }
 
+  int device_count() const override { return pjrt_client_->device_count(); }
+
+  bool HasProperty(const HloRunnerPropertyTag::Type tag) const override {
+    return false;
+  }
+
  private:
   absl::StatusOr<CompileOptions> GenerateDefaultCompileOptions(
       HloModule* module, bool run_hlo_passes);

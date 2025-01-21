@@ -91,6 +91,34 @@ class TensorBuffer
     return TensorBuffer(tensor_buffer);
   }
 
+  // Creates a TensorBuffer object that wraps an Android Hardware Buffer. Note
+  // that the provided AHardwareBuffer is not owned by the TensorBuffer object
+  // and must outlive the TensorBuffer object. The `ahwb_offset` parameter
+  // specifies the offset in bytes from the start of the AHardwareBuffer where
+  // the tensor data starts.
+  static Expected<TensorBuffer> CreateFromAhwb(
+      const RankedTensorType& tensor_type, AHardwareBuffer* ahwb,
+      size_t ahwb_offset) {
+#if LITERT_HAS_AHWB_SUPPORT
+    LiteRtTensorBuffer tensor_buffer;
+    auto litert_tensor_type = static_cast<LiteRtRankedTensorType>(tensor_type);
+
+    if (auto status = LiteRtCreateTensorBufferFromAhwb(
+            &litert_tensor_type, ahwb, ahwb_offset,
+            /*deallocator=*/nullptr, &tensor_buffer);
+        status != kLiteRtStatusOk) {
+      return Unexpected(
+          status,
+          "Failed to create tensor buffer from Android Hardware Buffer");
+    }
+    return TensorBuffer(tensor_buffer);
+#else
+    return litert::Unexpected(
+        kLiteRtStatusErrorRuntimeFailure,
+        "AHardwareBuffer is not supported on this platform");
+#endif
+  }
+
   litert::Expected<AHardwareBuffer*> GetAhwb() const {
 #if LITERT_HAS_AHWB_SUPPORT
     AHardwareBuffer* ahwb;
@@ -105,6 +133,27 @@ class TensorBuffer
     return litert::Unexpected(
         kLiteRtStatusErrorRuntimeFailure,
         "AHardwareBuffer is not supported on this platform");
+#endif
+  }
+
+  struct DmaBuf {
+    void* addr;
+    int fd;
+  };
+
+  litert::Expected<DmaBuf> GetDmaBuf() const {
+#if LITERT_HAS_DMABUF_SUPPORT
+    DmaBuf dma_buf;
+    if (LiteRtGetTensorBufferDmaBufBuffer(Get(), &dma_buf.addr, &dma_buf.fd) ==
+        kLiteRtStatusOk) {
+      return dma_buf;
+    } else {
+      return litert::Unexpected(kLiteRtStatusErrorRuntimeFailure,
+                                "Failed to get DMA-BUF from tensor buffer");
+    }
+#else
+    return litert::Unexpected(kLiteRtStatusErrorRuntimeFailure,
+                              "DMA-BUF is not supported on this platform");
 #endif
   }
 

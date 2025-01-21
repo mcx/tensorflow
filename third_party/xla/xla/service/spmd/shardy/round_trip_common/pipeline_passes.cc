@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
 #include "xla/service/spmd/shardy/round_trip_common/import_backend_func_calls.h"
@@ -37,18 +38,24 @@ void addCommonPreImportPasses(mlir::OpPassManager& pm) {
   // changes happen before shardings are added to operations, to ensure the
   // correct shardings are added and that they are not lost by this pass.
   pm.addNestedPass<FuncOp>(mlir::mhlo::createPrepareForExportPass());
-  // We import `stablehlo.constant` ops to `sdy.constant` ops so that constants
+  // We import `mhlo.constant` ops to `sdy.constant` ops so that constants
   // aren't folded in greedy pattern rewriters, which would lift them outside of
   // nested regions (this undoes `WhileLoopConstantSinking` HLO pass).
-  // Therefore, this pass needs to be applied after any stablehlo pass that
-  // expects `stablehlo.constant`, and before any pass that has a greedy pattern
+  // Therefore, this pass needs to be applied after any MHLO pass that
+  // expects `mhlo.constant`, and before any pass that has a greedy pattern
   // rewriter.
   pm.addNestedPass<FuncOp>(createImportConstantsPass());
   pm.addNestedPass<FuncOp>(mlir::mhlo::createFlattenTuplePass());
   // We need to canonicalize redundant mhlo::GetTupleElementOp and
   // mhlo::GetTupleOp. We also need to canonicalize mhlo::WhileOp before
   // `createOpenWhileFreeVarsShardingPass`.
-  pm.addPass(mlir::createCanonicalizerPass());
+  mlir::GreedyRewriteConfig config;
+  config.useTopDownTraversal = true;
+  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
+  config.fold = false;
+  config.cseConstants = false;
+  // TODO(tomnatan): consider only enabling the specific passes we need.
+  pm.addPass(mlir::createCanonicalizerPass(config));
   // Shardy is currently operating on stablehlo, since this is what JAX
   // emits. Long term shardy will be fully dialect agnostic, and both mhlo
   // and stablehlo can register their ops for sdy propagation.

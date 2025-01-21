@@ -949,19 +949,6 @@ class PjRtClient {
     return Unimplemented("BufferFromHostLiteral is not implemented.");
   }
 
-  virtual absl::StatusOr<std::unique_ptr<PjRtBuffer>> BufferFromHostLiteral(
-      const LiteralSlice& literal, PjRtDevice* device,
-      const Layout* device_layout) {
-    if (device_layout) {
-      return absl::UnimplementedError(absl::StrCat(
-          "BufferFromHostLiteral with device_layout is not implemented on "
-          "platform: ",
-          platform_name()));
-    }
-
-    return this->BufferFromHostLiteral(literal, device);
-  }
-
   // TODO(b/277820585): remove BufferFromHostLiteral with PjRtDevice after the
   // migration is done.
   virtual absl::StatusOr<std::unique_ptr<PjRtBuffer>> BufferFromHostLiteral(
@@ -1070,30 +1057,30 @@ class PjRtClient {
         "MakeCrossHostReceiveBuffersForGather is not implemented.");
   }
 
-  // Create ChannelHandles for XLA send/recv.
-  virtual absl::StatusOr<ChannelHandle> CreateChannelHandle() {
-    return Unimplemented("CreateChannelHandle is not implemented.");
-  }
-  virtual absl::StatusOr<ChannelHandle> CreateDeviceToHostChannelHandle() {
-    return Unimplemented("CreateDeviceToHostChannelHandle is not implemented.");
-  }
-
   // TODO(zhangqiaorjc): Experimental API to be removed.
   // Defragment device memory.
   virtual absl::Status Defragment() {
     return Unimplemented("Defragment is not implemented.");
   }
 
-  // If false, this client does not support send/recv host callbacks, and
-  // callers should not set the `send_callbacks` and `recv_callbacks` arguments
-  // in ExecuteOptions.
-  virtual bool SupportsSendRecvCallbacks() const { return false; }
-
   // Return the PjRtHostMemoryForDeviceManager for this client. It can be
   // nullptr if the implementation does not provide one.
   virtual PjRtHostMemoryForDeviceManager* GetPjRtHostMemoryForDeviceManager()
       const {
     return host_memory_for_device_manager_.get();
+  }
+
+  // Experimental: Maps memory for fast transfers. May have backend specific
+  // alignment requirements (most backends will require at least a page).
+  virtual absl::Status DmaMap(void* data, size_t size) {
+    return Unimplemented("DmaMap not supported on platform %s",
+                         platform_name());
+  }
+
+  // Experimental: Unmaps memory for fast transfers.
+  virtual absl::Status DmaUnmap(void* data) {
+    return Unimplemented("DmaUnmap not supported on platform %s",
+                         platform_name());
   }
 
  private:
@@ -1126,7 +1113,7 @@ class PjRtBuffer {
   // be easily copied.
   virtual std::shared_ptr<const PjRtLayout> layout() const {
     CHECK(on_device_shape().has_layout());
-    return std::make_shared<PjRtXlaLayout>(on_device_shape().layout());
+    return std::make_shared<PjRtLayout>(on_device_shape().layout());
   }
 
   // PjRtBuffers can either represent a single array buffer or a tuple of array
@@ -1249,7 +1236,7 @@ class PjRtBuffer {
       } else {
         device_shape = ShapeUtil::MakeShape(element_type(), literal_dims);
         // TODO(b/327524065): use PjRtLayout directly instead of xla::Layout
-        *device_shape.mutable_layout() = GetXlaLayoutUnsafe(layout());
+        *device_shape.mutable_layout() = layout()->xla_layout();
       }
     } else {
       // TODO(skyewm): does anything need to create tuple literals? The PJRT C

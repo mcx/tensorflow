@@ -101,6 +101,7 @@ cc_library(
     local_defines = if_cuda_is_configured(["GOOGLE_CUDA=1"]) + if_rocm_is_configured(["TENSORFLOW_USE_ROCM=1"]),
     deps = [
         "//xla:types",
+        "//xla/tsl/platform:resource_loader",
         "//xla/tsl/platform:subprocess",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status:statusor",
@@ -109,6 +110,42 @@ cc_library(
         "@local_tsl//tsl/platform:env",
         "@local_tsl//tsl/platform:errors",
         "@local_tsl//tsl/platform:path",
-        "@local_tsl//tsl/platform:resource_loader",
+    ],
+)
+
+cc_library(
+    name = "pattern_matcher_gmock",
+    testonly = 1,
+    hdrs = ["pattern_matcher_gmock.h"],
+    deps = [
+        "test",
+        "//xla:shape_util",
+        "//xla/hlo/ir:hlo",
+        "//xla/service:pattern_matcher",
+        "@local_tsl//tsl/platform:test",
+    ],
+)
+
+cc_library(
+    name = "test",
+    testonly = 1,
+    hdrs = ["test.h"],
+    visibility = internal_visibility([":friends"]),
+    deps = [
+        "@com_google_googletest//:gtest",
+        "@local_tsl//tsl/platform",
+        "@local_tsl//tsl/platform:test",
+    ],
+)
+
+cc_library(
+    name = "test_helpers",
+    testonly = 1,
+    hdrs = ["test_helpers.h"],
+    visibility = internal_visibility([":friends"]),
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@local_tsl//tsl/platform:test",
     ],
 )
