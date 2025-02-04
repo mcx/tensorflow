@@ -14,7 +14,10 @@
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = ["//tensorflow/lite/experimental/litert:__subpackages__"],
+    default_visibility = [
+        "//tensorflow/lite/experimental/litert:__subpackages__",
+        "//third_party/odml/infra/ml_drift_delegate/litert:__subpackages__",
+    ],
 )
 
 cc_library(
@@ -56,6 +59,7 @@ cc_library(
     hdrs = ["dynamic_loading.h"],
     linkopts = ["-ldl"],
     deps = [
+        ":filesystem",
         "//tensorflow/lite/experimental/litert/c:litert_common",
         "//tensorflow/lite/experimental/litert/c:litert_logging",  # buildcleaner: keep
         "@com_google_absl//absl/strings:str_format",
