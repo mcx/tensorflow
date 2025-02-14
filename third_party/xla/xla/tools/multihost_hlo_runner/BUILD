@@ -37,6 +37,7 @@ cc_library(
         ":functional_hlo_runner",
         "//xla:debug_options_flags",
         "//xla:status_macros",
+        "//xla:xla_data_proto_cc",
         "//xla/pjrt:pjrt_client",
         "//xla/pjrt/distributed",
         "//xla/pjrt/distributed:client",
@@ -60,6 +61,8 @@ cc_library(
         "@local_tsl//tsl/platform:statusor",
     ] + if_cuda_or_rocm([
         "//xla/service:gpu_plugin",
+        "//xla/backends/profiler/gpu:cupti_tracer",
+        "//xla/backends/profiler/gpu:device_tracer",
     ]) + if_cuda([
         "//xla/stream_executor:cuda_platform",
     ] + if_google(
@@ -166,6 +169,7 @@ cc_library(
         "//xla/tsl/platform:errors",
         "//xla/tsl/platform:status",
         "//xla/tsl/platform:statusor",
+        "//xla/tsl/util:fixed_option_set_flag",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/log",
@@ -185,6 +189,7 @@ cc_library(
         "@local_tsl//tsl/profiler/lib:profiler_factory_impl",
         "@local_tsl//tsl/profiler/lib:profiler_session",
         "@local_tsl//tsl/profiler/lib:profiler_session_impl",
+        "@local_tsl//tsl/profiler/protobuf:profiler_options_proto_cc",
         "@local_tsl//tsl/profiler/protobuf:xplane_proto_cc",
     ],
 )
@@ -204,8 +209,7 @@ xla_test(
         "gpu",
     ],
     data = [
-        "data/multiple_gemm_fusions_1.hlo",
-        "data/multiple_gemm_fusions_2.hlo",
+        "data/multiple_gemm_fusions.hlo",
         "data/sharded_16_devices.hlo",
         "data/sharded_2_devices.hlo",
         "data/sharded_computation.hlo",
@@ -224,7 +228,9 @@ xla_test(
         "//xla:xla_proto_cc",
         "//xla/hlo/testlib:filecheck",
         "//xla/pjrt:pjrt_client",
+        "//xla/pjrt:pjrt_executable",
         "//xla/pjrt/plugin/xla_gpu:xla_gpu_client_options",
+        "//xla/runtime/large_hlo_snapshot_serialization:serialization",
         "//xla/service:hlo_proto_cc",
         "//xla/tsl/lib/core:status_test_util",
         "//xla/tsl/platform:env",
@@ -242,5 +248,6 @@ xla_test(
         "@com_google_absl//absl/time",
         "@com_google_googletest//:gtest",
         "@local_tsl//tsl/platform:path",
+        "@local_tsl//tsl/platform:protobuf",
     ],
 )
