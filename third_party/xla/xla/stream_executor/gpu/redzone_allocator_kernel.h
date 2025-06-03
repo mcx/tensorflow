@@ -13,8 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "xla/pjrt/c/pjrt_c_api_tpu.h"
-#include "xla/pjrt/plugin/plugin_names.h"
-#include "xla/pjrt/plugin/static_registration.h"
+#ifndef XLA_STREAM_EXECUTOR_GPU_REDZONE_ALLOCATOR_KERNEL_H_
+#define XLA_STREAM_EXECUTOR_GPU_REDZONE_ALLOCATOR_KERNEL_H_
 
-REGISTER_PJRT_PLUGIN(kTpuPjrtName, GetPjrtApi())
+#include <cstdint>
+
+#include "xla/stream_executor/device_memory.h"
+#include "xla/stream_executor/kernel.h"
+
+namespace stream_executor::gpu {
+
+struct RedzoneAllocatorKernel {
+  using KernelType = TypedKernel<DeviceMemory<uint8_t>, uint8_t, uint64_t,
+                                 DeviceMemory<uint64_t>>;
+};
+
+}  // namespace stream_executor::gpu
+
+#endif  // XLA_STREAM_EXECUTOR_GPU_REDZONE_ALLOCATOR_KERNEL_H_
