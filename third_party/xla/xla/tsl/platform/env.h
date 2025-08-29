@@ -454,7 +454,9 @@ class Env {
   ///
   virtual void StartDetachedThread(const ThreadOptions& thread_options,
                                    const std::string& name,
-                                   absl::AnyInvocable<void()> fn) = 0;
+                                   absl::AnyInvocable<void()> fn) {
+    LOG(FATAL) << "StartDetachedThread is not implemented in this environment.";
+  }
 
   // Returns the thread id of calling thread.
   // Posix: Returns pthread id which is only guaranteed to be unique within a
